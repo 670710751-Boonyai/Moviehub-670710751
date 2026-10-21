@@ -86,3 +86,5 @@ export function updateAdminMovie(id,fields,token){return apiFetch(`/api/admin/mo
 
 export function getGenres(){return apiFetch('/api/genres').then(data=>data.items);}
 export function getAdminMovie(id,token){return apiFetch(`/api/admin/movies/${id}`,{token});}
+
+export function getMyMovieState(movieId,token){return apiFetch(`/api/movies/${movieId}/my-state`,{token});}

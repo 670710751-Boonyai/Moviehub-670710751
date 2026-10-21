@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { putVote, addToWishlist, removeFromWishlist } from '../api/backend';
+import { putVote, addToWishlist, removeFromWishlist, getMyMovieState } from '../api/backend';
 
 // แถบบุ่มใต้ชื่อหนัง: ให้คะแนน 1 ถึง 10 และปุ่มเพิ่มเข้า wishlist (ต้อง login)
 function MovieActions({ movieId }) {
@@ -9,6 +9,15 @@ function MovieActions({ movieId }) {
   const [myScore, setMyScore] = useState(null);
   const [inWishlist, setInWishlist] = useState(false);
   const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    let active=true;
+    setMyScore(null);setInWishlist(false);setMessage(null);
+    if (isLoggedIn && token) getMyMovieState(movieId,token)
+      .then(data=>{if(active){setMyScore(data.vote ?? null);setInWishlist(Boolean(data.inWishlist));}})
+      .catch(err=>{if(active)setMessage(err.message)});
+    return ()=>{active=false};
+  },[movieId,isLoggedIn,token]);
 
   if (!isLoggedIn) {
     return (

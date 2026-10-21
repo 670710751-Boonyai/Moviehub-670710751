@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(MEMBER_KEY);
   }
 
-  const value = { token, member, isLoggedIn: Boolean(token), login, register, logout };
+  const value = { token, member, isLoggedIn: Boolean(token), isAdmin: Boolean(token && member?.role === 'admin'), login, register, logout };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

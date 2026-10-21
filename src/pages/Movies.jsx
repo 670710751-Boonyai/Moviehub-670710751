@@ -1,86 +1,39 @@
 import { useEffect, useState } from 'react';
 import MovieGrid from '../components/MovieGrid';
-import { getMovies, CACHE_KEY } from '../api/tmdb';
-import { forget } from '../api/cache';
+import { getMovies } from '../api/backend';
 
-// import { movies as localMovies } from '../data/data';
-// TODO ขั้นที่ 3: import { useEffect } from 'react' และ import { getMovies, CACHE_KEY } from '../api/tmdb' กับ { forget } from '../api/cache'
-
-function Movies() {
-  const [query, setQuery] = useState('');          // คำค้น (controlled input) กรองในเครื่อง ไม่ยิง API
-  const [genre, setGenre] = useState('all');       // แนวที่เลือกจากแถบปุ่ม 'all' = ทุกแนว
-const [movies, setMovies] = useState([]);        // รายการจาก getMovies() (โหลดจริงวันละครั้ง)
-  const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
-    const [error, setError] = useState(null);
-      const [reloadKey, setReloadKey] = useState(0);   // ตัวนับสำหรับปุ่ม "ลองใหม่"
-  // TODO ขั้นที่ 3: เปลี่ยน 3 ค่าคงที่ด้านล่างให้เป็น state แล้วโหลดจาก API ด้วย useEffect
-  //   movies   เริ่มจาก []  (รายการที่ได้จาก getMovies() ซึ่งโหลดจริงวันละครั้ง)
-  //   status   'loading' | 'success' | 'error'
-  //   error    Error หรือ null
-  //   และ reloadKey (ตัวนับ) สำหรับปุ่ม "ลองใหม่" ที่ต้อง forget(CACHE_KEY) ก่อนโหลดซ้ำ
-  // const movies = localMovies;
-  // const status = 'success';
-//  const error = null;
-
-useEffect(() => {
-let ignore = false;                            // ธงกันคำตอบเก่ามาทับคำตอบใหม่
-
-async function load() {
-setStatus('loading');
- try {
- const list = await getMovies();            // ครั้งแรกของวันยิง API ครั้งถัดไปอ่านจาก localStorage
-                                      if (!ignore) {
-                            setMovies(list);
-                                                          setStatus('success');
-                                                                  }
-                                                                        } catch (err) {
-                                                                                if (!ignore) {
-                                                                                          setError(err);
-                                                                                                    setStatus('error');
-                                                                                                            }
-                                                                                                                  }
-                                                                                                                      }
-                                                                                                                          load();
-})
-
-  // ค่าที่คำนวณจาก state ไม่ต้องเป็น state เอง: รายชื่อแนวที่มีจริง และรายการหลังกรอง
-  const genres = [...new Set(movies.map(m => m.genre).filter(Boolean))];
-  const q = query.trim().toLowerCase();
-  const shown = movies.filter(m =>
-    (genre === 'all' || m.genre === genre) &&
-    (q === '' || m.title.toLowerCase().includes(q) || (m.titleTh ?? '').toLowerCase().includes(q))
+export default function Movies() {
+  const [query,setQuery]=useState('');
+  const [genre,setGenre]=useState('all');
+  const [movies,setMovies]=useState([]);
+  const [status,setStatus]=useState('loading');
+  const [error,setError]=useState(null);
+  const [reloadKey,setReloadKey]=useState(0);
+  useEffect(()=>{
+    let active=true;
+    setStatus('loading');setError(null);
+    getMovies().then(list=>{if(active){setMovies(list);setStatus('success')}})
+      .catch(err=>{if(active){setError(err);setStatus('error')}});
+    return ()=>{active=false};
+  },[reloadKey]);
+  const genres=[...new Set(movies.map(m=>m.genre).filter(Boolean))];
+  const q=query.trim().toLowerCase();
+  const shown=movies.filter(m=>
+    (genre==='all'||m.genre===genre) &&
+    (m.title.toLowerCase().includes(q)||(m.titleTh||'').toLowerCase().includes(q))
   );
-
-  const chipClass = (active) =>
-    'rounded-full border px-3 py-1 text-sm transition ' +
-    (active ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-emerald-200 bg-white text-slate-600 hover:bg-emerald-50');
-
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-10 md:px-6">
-      <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">หนังทั้งหมด</h1>
-          <p className="text-sm text-slate-500">
-          แหล่งข้อมูล: TMDB (โหลดวันละครั้ง) {status === 'success' && `| พบ ${shown.length} จาก ${movies.length} เรื่อง`}
-          </p>
-        </div>
-        <input value={query} onChange={(e) => setQuery(e.target.value)}
-               placeholder="พิมพ์ชื่อหนังเพื่อกรอง..."
-               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 md:w-72" />
-      </div>
-
-      {/* เมนูเลือกแนวหนัง สร้างจากข้อมูลที่มีจริง ไม่ต้องพิมพ์รายชื่อเอง */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button onClick={() => setGenre('all')} className={chipClass(genre === 'all')}>ทุกแนว</button>
-        {genres.map(g => (
-          <button key={g} onClick={() => setGenre(g)} className={chipClass(genre === g)}>{g}</button>
-        ))}
-      </div>
-
-      <MovieGrid movies={shown} status={status} error={error}
-                 onRetry={() => setReloadKey(k => k + 1) } />
+  const chipClass=(active)=>'rounded-full border px-3 py-1 text-sm transition '+(active?'border-emerald-500 bg-emerald-500 text-white':'border-emerald-200 bg-white text-slate-600 hover:bg-emerald-50');
+  return <div className="mx-auto max-w-5xl px-4 py-10 md:px-6">
+    <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div><h1 className="text-2xl font-semibold text-slate-900">หนังทั้งหมด</h1>
+      <p className="text-sm text-slate-500">ข้อมูลจาก MovieHub Go API {status==='success'&&`| พบ ${shown.length} จาก ${movies.length} เรื่อง`}</p></div>
+      <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ค้นหาชื่อหนัง..."
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 md:w-72" />
     </div>
-  );
+    <div className="mb-6 flex flex-wrap gap-2">
+      <button className={chipClass(genre==='all')} onClick={()=>setGenre('all')}>ทุกแนว</button>
+      {genres.map(g=><button key={g} className={chipClass(genre===g)} onClick={()=>setGenre(g)}>{g}</button>)}
+    </div>
+    <MovieGrid movies={shown} status={status} error={error} onRetry={()=>setReloadKey(x=>x+1)} />
+  </div>;
 }
-
-export default Movies;

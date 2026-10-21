@@ -6,6 +6,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMovies from './pages/admin/AdminMovies';
 import AdminMembers from './pages/admin/AdminMembers';
+import AdminMovieForm from './pages/admin/AdminMovieForm';
 import Footer from './components/Footer';
 import KeyBanner from './components/KeyBanner';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -38,6 +39,8 @@ function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="movies" element={<AdminMovies />} />
               <Route path="members" element={<AdminMembers />} />
+              <Route path="movies/new" element={<AdminMovieForm />} />
+              <Route path="movies/:id/edit" element={<AdminMovieForm />} />
             </Route>
             <Route path="/lab" element={<ApiLab />} />
             <Route path="/about" element={<About />} />

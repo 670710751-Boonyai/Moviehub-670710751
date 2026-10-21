@@ -83,3 +83,6 @@ export function setMemberRole(id,role,token){return apiFetch(`/api/admin/members
 export function deleteAdminMovie(id,token){return apiFetch(`/api/admin/movies/${id}`,{method:'DELETE',token});}
 export function createAdminMovie(fields,token){return apiFetch('/api/admin/movies',{method:'POST',body:fields,token});}
 export function updateAdminMovie(id,fields,token){return apiFetch(`/api/admin/movies/${id}`,{method:'PUT',body:fields,token});}
+
+export function getGenres(){return apiFetch('/api/genres').then(data=>data.items);}
+export function getAdminMovie(id,token){return apiFetch(`/api/admin/movies/${id}`,{token});}

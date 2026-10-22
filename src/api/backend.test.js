@@ -68,3 +68,12 @@ test('server ตอบมาไม่ใช่ JSON (เช่น ลืมร�
 
   await expect(apiFetch('/api/movies')).rejects.toThrow('server ไม่ได้ตอบเป็น JSON');
 });
+test('Go API error object: show the Thai message instead of [object Object]', async () => {
+  fetch.mockResolvedValue(fakeResponse(401, {
+    error: { code: 'BAD_CREDENTIALS', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' },
+  }));
+
+  await expect(login('nida@example.com', 'incorrect')).rejects.toThrow(
+    'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+  );
+});

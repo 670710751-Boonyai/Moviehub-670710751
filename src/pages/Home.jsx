@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-// import { getMovies } from '../api/tmdb';
 import { getMovies } from '../api/backend';
+import { useAuth } from '../auth/AuthContext';
 import FeaturedCarousel from '../components/FeaturedCarousel';
-// ลบ import data.js ทิ้ง (ถ้าเหลือไว้แต่ไม่ได้ใช้ Vercel จะ build ล้มเพราะ warning)
 
-const STEPS = [
-  { n: 1, file: 'src/api/tmdb.js', what: 'เขียนส่วน fetch ใน getJSON' },
-  { n: 2, file: 'src/api/tmdb.js', what: 'เขียน toMovie แปลง JSON ของ TMDB' },
-  { n: 3, file: 'src/pages/Movies.jsx', what: 'useEffect โหลดหนังจาก API (วันละครั้ง) แล้วกรองในเครื่อง' },
-  { n: 4, file: 'src/pages/MovieDetail.jsx', what: 'โหลดรายละเอียดตาม id' },
-  { n: 5, file: 'src/pages/Home.jsx', what: 'หนังแนะนำสุ่มจากข้อมูล API ชุดเดียวกัน' },
-  { n: 6, file: 'docs/api-wishlist.md', what: 'กรอกรายการ API ที่จะขอจากทีม Backend' },
+const FEATURED_LIMIT = 12;
+
+const FEATURES = [
+  {
+    icon: '🎬',
+    title: 'ค้นหาหนังที่ชอบ',
+    description: 'เลือกดูภาพยนตร์ ค้นหาชื่อเรื่อง และกรองตามแนวหนังได้ในหน้าเดียว',
+  },
+  {
+    icon: '⭐',
+    title: 'ให้คะแนนและเขียนรีวิว',
+    description: 'เข้าสู่ระบบเพื่อแบ่งปันความคิดเห็นและให้คะแนนหนังที่ดูแล้ว',
+  },
+  {
+    icon: '💚',
+    title: 'บันทึกเรื่องที่อยากดู',
+    description: 'เพิ่มหนังลงใน Wishlist ส่วนตัว แล้วกลับมาดูรายการของคุณได้ทุกเมื่อ',
+  },
 ];
 
-// สลับลำดับแบบสุ่มบนสำเนา ไม่แตะ array เดิม
 function shuffle(list) {
   const copy = [...list];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -24,76 +33,115 @@ function shuffle(list) {
   return copy;
 }
 
+export default function Home() {
+  const { isLoggedIn } = useAuth();
+  const [movies, setMovies] = useState([]);
+  const [picks, setPicks] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-
-
-function Home() {
-  const [picks, setPicks] = useState([]);   // เริ่มว่าง รอข้อมูลจาก API แล้วค่อยสุ่ม
-
-  // ใช้ getMovies() ตัวเดียวกับหน้า Movies ถ้าวันนี้เคยโหลดแล้วจะได้จาก localStorage ทันที
   useEffect(() => {
-    let ignore = false;
+    let active = true;
+    setStatus('loading');
+    setError('');
+
     getMovies()
-      .then(list => { if (!ignore) setPicks(shuffle(list)); })
-      .catch(() => { if (!ignore) setPicks([]); });   // พลาดก็แค่ไม่มีหนังแนะนำ หน้าแรกไม่ควรพัง
-    return () => { ignore = true; };
-  }, []);
-   
-  
+      .then((list) => {
+        if (!Array.isArray(list)) throw new Error('ข้อมูลหนังมีรูปแบบไม่ถูกต้อง');
+        if (!active) return;
+        setMovies(list);
+        setPicks(shuffle(list).slice(0, FEATURED_LIMIT));
+        setStatus('success');
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err.message || 'ไม่สามารถโหลดข้อมูลหนังได้');
+        setStatus('error');
+      });
+
+    return () => { active = false; };
+  }, [reloadKey]);
+
+  function refreshRecommendations() {
+    setPicks(shuffle(movies).slice(0, FEATURED_LIMIT));
+  }
+
   return (
-    <div className="mx-auto max-w-5xl px-4 md:px-6">
-      {/* Hero */}
-      <section className="py-14 md:py-20">
-        <p className="text-sm font-medium text-emerald-600">สัปดาห์นี้: Fetch / JSON / API</p>
-        <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 md:text-5xl">
-          หนังน่าดู รวมไว้ที่เดียว
-        </h1>
-        <p className="mt-4 max-w-xl text-slate-600">
-          ตอนนี้ MovieHub ยังมีหนังแค่ 10 เรื่องจากไฟล์ data.js
-          วันนี้เราจะเชื่อมกับ TMDB ให้ได้หนังที่กำลังฉายจริง และเตรียมต่อกับ Backend ของทีม
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/movies" className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
-            ดูหนังทั้งหมด
-          </Link>
-          <Link to="/lab" className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50">
-            ทดลองยิง API
-          </Link>
-        </div>
-      </section>
-
-      {/* Featured */}
-      <section>
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">หนังแนะนำ</h2>
-            <p className="text-sm text-slate-500">สุ่มลำดับใหม่ทุกครั้งที่เปิดหน้า แหล่งข้อมูล: data.js</p>
+    <div className="mx-auto max-w-5xl px-4 pb-16 md:px-6">
+      <section className="relative mt-8 overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-teal-100 px-6 py-12 shadow-sm md:mt-10 md:px-12 md:py-16">
+        <div className="relative z-10 max-w-2xl">
+          <p className="inline-flex rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold tracking-wide text-emerald-700">
+            MOVIEHUB · MOVIES, REVIEWS & WISHLIST
+          </p>
+          <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-slate-900 md:text-5xl">
+            หนังน่าดู รวมไว้ที่เดียว
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
+            ค้นพบภาพยนตร์ เลือกดูรายละเอียด ให้คะแนน เขียนรีวิว
+            และเก็บเรื่องโปรดไว้ในรายการอยากดูของคุณ
+            ข้อมูลหนังเชื่อมต่อกับ MovieHub Go API
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/movies" className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+              สำรวจหนังทั้งหมด →
+            </Link>
+            <Link to={isLoggedIn ? '/me/wishlist' : '/register'} className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50">
+              {isLoggedIn ? 'รายการอยากดูของฉัน' : 'เริ่มต้นสมัครสมาชิก'}
+            </Link>
           </div>
-          <button onClick={() => setPicks(shuffle(picks))} className="text-sm text-emerald-600 hover:underline">
-            สุ่มใหม่
-          </button>
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-600" aria-live="polite">
+            <span className="font-medium text-emerald-800">
+              {status === 'success'
+                ? `🎞️ ${movies.length.toLocaleString('en-US')} เรื่องในคลังหนัง`
+                : status === 'loading'
+                  ? '🎞️ กำลังโหลดคลังหนัง...'
+                  : '🎞️ ข้อมูลหนังยังไม่พร้อม'}
+            </span>
+            <span>รีวิว · ให้คะแนน · Wishlist</span>
+          </div>
         </div>
-        <FeaturedCarousel movies={picks} />
       </section>
 
-      {/* Roadmap */}
-      <section className="mt-16">
-        <h2 className="text-xl font-semibold text-slate-900">แผนที่ของโปรเจกต์นี้</h2>
-        <p className="text-sm text-slate-500">หน้าตาเสร็จแล้ว เหลือเติมส่วนที่คุยกับ API ทีละขั้น</p>
-        <ol className="mt-4 divide-y divide-emerald-100 rounded-xl border border-emerald-100 bg-white">
-          {STEPS.map(s => (
-            <li key={s.n} className="flex items-center gap-4 px-4 py-3">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-50 text-sm font-medium text-emerald-700">{s.n}</span>
-              <div className="min-w-0">
-                <p className="text-sm text-slate-900">{s.what}</p>
-                <code className="text-xs text-slate-400">{s.file}</code>
-              </div>
-            </li>
+      <section className="mt-12" aria-labelledby="featured-title">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="featured-title" className="text-2xl font-semibold text-slate-900">หนังแนะนำสำหรับคุณ</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              สุ่มจากภาพยนตร์ใน MovieHub Go API ไม่ใช่ข้อมูลตัวอย่างจาก data.js
+            </p>
+          </div>
+          {status === 'success' && movies.length > 0 && (
+            <button type="button" onClick={refreshRecommendations} className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50">
+              ↻ สุ่มใหม่
+            </button>
+          )}
+        </div>
+        {status === 'loading' && <p role="status" className="rounded-xl border border-emerald-100 bg-white p-10 text-center text-slate-500">กำลังโหลดหนังแนะนำ...</p>}
+        {status === 'error' && (
+          <div role="alert" className="rounded-xl border border-rose-100 bg-white p-6">
+            <p className="text-sm text-rose-700">โหลดหนังแนะนำไม่สำเร็จ: {error}</p>
+            <button type="button" onClick={() => setReloadKey(n => n + 1)} className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700">ลองอีกครั้ง</button>
+          </div>
+        )}
+        {status === 'success' && <FeaturedCarousel movies={picks} />}
+      </section>
+
+      <section className="mt-14" aria-labelledby="features-title">
+        <div className="mb-5">
+          <h2 id="features-title" className="text-2xl font-semibold text-slate-900">ทำอะไรได้บ้างใน MovieHub?</h2>
+          <p className="mt-1 text-sm text-slate-500">ฟีเจอร์ที่พร้อมให้สมาชิกใช้งานบนเว็บไซต์</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {FEATURES.map(feature => (
+            <article key={feature.title} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+              <span className="text-2xl" aria-hidden="true">{feature.icon}</span>
+              <h3 className="mt-3 font-semibold text-slate-900">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
+            </article>
           ))}
-        </ol>
+        </div>
       </section>
     </div>
   );
 }
-
-export default Home;
